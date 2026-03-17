@@ -2704,7 +2704,17 @@ void redisDbPersistentData::prepOverwriteForSnapshot(char *key)
         {
             sds keyNew = sdsdupshared(itr.key());
             if (dictAdd(m_pdictTombstone, keyNew, (void*)dictHashKey(m_pdict, key)) != DICT_OK)
+            {
                 sdsfree(keyNew);
+            }
+            else
+            {
+                // The tombstone hides this snapshot key from iteration.
+                // If the key had an expire, we must decrement m_numexpires
+                // to keep the counter consistent with what iterate_threadsafe sees.
+                if (itr.val() != nullptr && itr.val()->FExpires())
+                    m_numexpires--;
+            }
         }
     }
 }
