@@ -1369,7 +1369,14 @@ int rdbSaveRio(rio *rdb, const redisDbPersistentDataSnapshot **rgpdb, int *error
         });
         if (!fSavedAll)
             goto werr;
-        serverAssert(ckeysExpired == db->expireSize());
+        /* Ketska: was serverAssert. A mismatch only means the expire counter
+         * (used for the RESIZEDB hint above) drifted from the keys' own expire
+         * flags (Snapchat/KeyDB#743); the keys and their TTLs were written
+         * correctly from the flags. Crashing here killed every BGSAVE and
+         * full resync until restart, so log it instead and keep the save. */
+        if (ckeysExpired != db->expireSize())
+            serverLog(LL_WARNING, "RDB save: expire counter mismatch in db %d (counted %zu, counter %zu); see Snapchat/KeyDB#743",
+                j, ckeysExpired, (size_t)db->expireSize());
     }
 
     /* If we are storing the replication information on disk, persist
