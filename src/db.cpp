@@ -408,7 +408,14 @@ int dbMerge(redisDb *db, sds key, robj *val, int fReplace)
  * The client 'c' argument may be set to NULL if the operation is performed
  * in a context where there is no clear client performing the operation. */
 void genericSetKey(client *c, redisDb *db, robj *key, robj *val, int keepttl, int signal) {
-    db->prepOverwriteForSnapshot(szFromObj(key));
+    /* Ketska: not with KEEPTTL. prepOverwriteForSnapshot hides the snapshot
+     * copy of the key instead of bringing it into the live dict, so dbAddCore
+     * then inserts the value as a brand-new key and dbOverwrite (which keeps
+     * the TTL) never runs: SET ... KEEPTTL silently made the key persistent
+     * whenever a snapshot was alive. Without the shortcut, dbAddCore's ensure()
+     * copies the old value with its expire and dbOverwrite keeps it. */
+    if (!keepttl)
+        db->prepOverwriteForSnapshot(szFromObj(key));
     dict_iter iter;
     if (!dbAddCore(db, szFromObj(key), val, true /* fUpdateMvcc */, false /*fAssumeNew*/, &iter)) {
         dbOverwrite(db, key, val, !keepttl, &iter);
