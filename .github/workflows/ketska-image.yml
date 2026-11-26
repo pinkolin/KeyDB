@@ -1,0 +1,41 @@
+# Ketska: build the patched KeyDB image, prove the #743 fixes against upstream,
+# and only then push it to GHCR.
+name: ketska-image
+
+on:
+  push:
+    branches: [ketska-6.3.4]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/pinkolin/keydb
+  VERSION: 6.3.4-ketska.1
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (amd64)
+        run: docker build -f pkg/docker/Dockerfile.ketska -t keydb-ketska:test .
+
+      - name: Reproduce on upstream 6.3.4 (expected to fail, informational)
+        run: bash tests/ketska/repro_743.sh eqalpha/keydb:x86_64_v6.3.4 25 || echo "::notice::upstream reproduced the bug (expected)"
+
+      - name: Same test on the Ketska build (must pass)
+        run: bash tests/ketska/repro_743.sh keydb-ketska:test 25
+
+      - name: Push to GHCR
+        if: github.ref == 'refs/heads/ketska-6.3.4'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for t in "$VERSION" "$VERSION-${GITHUB_SHA::8}"; do
+            docker tag keydb-ketska:test "$IMAGE:$t"
+            docker push "$IMAGE:$t"
+          done

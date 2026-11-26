@@ -1,6 +1,7 @@
 name: CI
 
-on: [push, pull_request]
+# Ketska fork: upstream CI only on demand (our image workflow is ketska-image.yml).
+on: [workflow_dispatch]
 
 jobs:
 
