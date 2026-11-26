@@ -13,7 +13,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/pinkolin/keydb
-  VERSION: 6.3.4-ketska.1
+  VERSION: 6.3.4-ketska.2
 
 jobs:
   build-test-push:
@@ -30,6 +30,12 @@ jobs:
 
       - name: Same test on the Ketska build (must pass)
         run: bash tests/ketska/repro_743.sh keydb-ketska:test 25
+
+      - name: Three-node active-replica mesh with restarts, upstream (informational)
+        run: bash tests/ketska/mesh_restart.sh eqalpha/keydb:x86_64_v6.3.4 20 || echo "::warning::upstream mesh test failed"
+
+      - name: Three-node active-replica mesh with restarts, Ketska build (must pass)
+        run: bash tests/ketska/mesh_restart.sh keydb-ketska:test 20
 
       - name: Push to GHCR
         if: github.ref == 'refs/heads/ketska-6.3.4'
