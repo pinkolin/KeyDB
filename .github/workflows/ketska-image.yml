@@ -34,6 +34,9 @@ jobs:
       - name: Three-node active-replica mesh with restarts, upstream (informational)
         run: bash tests/ketska/mesh_restart.sh eqalpha/keydb:x86_64_v6.3.4 20 || echo "::warning::upstream mesh test failed"
 
+      - name: Mesh test on the withdrawn ketska.1 (expected to fail, proves the test)
+        run: bash tests/ketska/mesh_restart.sh ghcr.io/pinkolin/keydb:6.3.4-ketska.1 20 && echo "::warning::mesh test did NOT catch ketska.1" || echo "::notice::mesh test caught ketska.1 (expected)"
+
       - name: Three-node active-replica mesh with restarts, Ketska build (must pass)
         run: bash tests/ketska/mesh_restart.sh keydb-ketska:test 20
 
